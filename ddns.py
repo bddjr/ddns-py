@@ -1,10 +1,11 @@
 print('''ddns-py 启动！
 一款用于 cloudflare DNS 的 IPv4 DDNS 工具。
-版本：1.0
+版本：1.1
 作者：bddjr
 仓库：https://github.com/bddjr/ddns-py
 请确认您的宽带有公网IPv4再使用。判断方法：路由器显示的 WAN IP 与 https://4.ipw.cn 显示的一致
-''')
+=============================================='''
+)
 
 #部分源码借鉴自 https://zhuanlan.zhihu.com/p/461993720
 
@@ -14,46 +15,46 @@ import json, time, sys, copy, os
 def logger(text):
     if isinstance(text, dict):
         text = json.dumps(text, indent=4)
-    print("[{}]{}".format(
+    print("[{}] {}".format(
         time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
         text
     ))
 
-#Py3可能不自带的模块
-def pip_install(name):
-    logger('尝试使用清华源安装模块 '+name)
-    cmd = 'pip install requests -i https://pypi.tuna.tsinghua.edu.cn/simple'
-    print(cmd)
-    os.system(cmd)
-    print()
-
-    logger('尝试导入模块 '+name)
-    try:
-        exec('import ' + name)
-        return
-    except: pass
-
-    logger('尝试直接安装模块 '+name)
-    cmd = 'pip install requests'
-    print(cmd)
-    os.system(cmd)
-    print()
-
-    logger('再次尝试导入模块 '+name)
-    try:
-        exec('import ' + name)
-        return
-    except: pass
-
-    logger('导入失败。:(')
-    exit()
-
-try: import requests
-except: pip_install('requests')
-
-
-
 try:
+    #Py3可能不自带的模块
+    def pip_install(name):
+        logger('尝试使用清华源安装模块 '+name)
+        cmd = 'pip install requests -i https://pypi.tuna.tsinghua.edu.cn/simple'
+        print(cmd)
+        os.system(cmd)
+        print()
+
+        logger('尝试导入模块 '+name)
+        try:
+            exec('import ' + name)
+            return
+        except: pass
+
+        logger('尝试直接安装模块 '+name)
+        cmd = 'pip install requests'
+        print(cmd)
+        os.system(cmd)
+        print()
+
+        logger('再次尝试导入模块 '+name)
+        try:
+            exec('import ' + name)
+            return
+        except: pass
+
+        logger('导入失败。:(')
+        exit()
+
+    try: import requests
+    except: pip_install('requests')
+
+    del pip_install
+
     config_filepath = 'ddns.py.config.json'
     logger('读取配置文件 ' + config_filepath)
     if not os.path.exists(config_filepath):
@@ -72,8 +73,10 @@ try:
             )
         logger('配置文件模板已生成，请在配置文件里填写 name（域名） api_key（API密钥） zone_id（区域ID）')
         exit()
+
     config = json.load(open(config_filepath))
     del config_filepath
+
     config = {
         "name": str.strip(config['name']),
         "get_ip_from": str.strip(config['get_ip_from']),
@@ -108,7 +111,7 @@ try:
         exit()
     del b
 
-    print()
+    print('—————————————————————————')
 
 
     modelist = [
@@ -136,9 +139,9 @@ try:
         except:
             print('\n输入格式错误！')
             exit()
-        print()
+        print('')
 
-    print('模式：%s\n' % (modelist[mode-1]))
+    print('模式：%s\n—————————————————————————' % (modelist[mode-1]))
     del modelist
 
 
