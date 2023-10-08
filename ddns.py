@@ -1,9 +1,8 @@
 print('''ddns-py 启动！
-一款用于 cloudflare DNS 的 IPv4 DDNS 工具。
-版本：1.1
+一款用于 cloudflare DNS 的 DDNS 工具。
+版本：1.2
 作者：bddjr
 仓库：https://github.com/bddjr/ddns-py
-请确认您的宽带有公网IPv4再使用。判断方法：路由器显示的 WAN IP 与 https://4.ipw.cn 显示的一致
 =============================================='''
 )
 
@@ -62,10 +61,11 @@ try:
         with open(config_filepath, 'x') as f:
             f.write(
 '''{
-    "name": "example.com",
-    "get_ip_from": "https://4.ipw.cn",
     "api_key": "",
     "zone_id": "",
+    "type": "A",
+    "get_ip_from": "https://4.ipw.cn",
+    "name": "example.com",
     "ttl": 60,
     "proxied": false
 }
@@ -74,14 +74,14 @@ try:
         logger('配置文件模板已生成，请在配置文件里填写 name（域名） api_key（API密钥） zone_id（区域ID）')
         exit()
 
-    config = json.load(open(config_filepath))
-    del config_filepath
+    config = json.load(open(config_filepath, 'r'))
 
     config = {
-        "name": str.strip(config['name']),
-        "get_ip_from": str.strip(config['get_ip_from']),
         "api_key": str.strip(config['api_key']),
         "zone_id": str.strip(config['zone_id']),
+        "type": str.upper(str.strip(config['type'])),
+        "get_ip_from": str.strip(config['get_ip_from']),
+        "name": str.lower(str.strip(config['name'])),
         "ttl": int(config['ttl']),
         "proxied": bool(config['proxied'])
     }
@@ -92,24 +92,42 @@ try:
     printconfig = copy.deepcopy(config)
     printconfig['api_key'] = pixel_str(printconfig['api_key'])
     printconfig['zone_id'] = pixel_str(printconfig['zone_id'])
-    del pixel_str
     logger(json.dumps(printconfig, indent=4))
     del printconfig
 
     b = False
     if config['api_key'] == '':
-        logger('请在配置文件里填写 api_key（API密钥）')
+        logger('【错误】请在配置文件里填写 api_key（API密钥）')
         b = True
     if config['zone_id'] == '':
-        logger('请在配置文件里填写 zone_id（区域ID）')
+        logger('【错误】请在配置文件里填写 zone_id（区域ID）')
         b = True
     if config['name'] in ['','example.com']:
-        logger('请在配置文件里填写 name（域名）')
+        logger('【错误】请在配置文件里填写 name（域名）')
         b = True
 
     if b:
         exit()
     del b
+
+    config_getipform_lower = str.lower(config['get_ip_from'])
+    if config['type'] == "A":
+        if config_getipform_lower in ["https://6.ipw.cn","http://6.ipw.cn"]:
+            logger('【错误】A记录是用于IPv4的，但您错误地将get_ip_from填写为获取IPv6的，请改成 https://4.ipw.cn')
+            exit()
+        logger('【提醒】请预先确认您的网络支持公网IPv4再使用。判断方法：路由器显示的 WAN IP 与 https://4.ipw.cn 显示的一致')
+    elif config['type'] == "AAAA":
+        if config_getipform_lower in ["https://4.ipw.cn","http://4.ipw.cn"]:
+            logger('【错误】AAAA记录是用于IPv6的，但您错误地将get_ip_from填写为获取IPv4的，请改成 https://6.ipw.cn')
+            exit()
+        logger('【提醒】请预先确认您的网络支持公网IPv6再使用。家庭宽带可能需要将光猫、路由器的防火墙关闭（会暴露所有IPv6端口！）')
+    else:
+        logger('【错误】该程序不支持{}类型记录！请修改type'.format(config['type']))
+        exit()
+    del config_getipform_lower
+
+    if config['proxied']:
+        logger('【警告】开启 proxied 仅用于为网页服务器套 cloudflare CDN 作为防护，其它多数服务不适用，还可能会减速，请慎重开启')
 
     print('—————————————————————————')
 
@@ -154,14 +172,10 @@ try:
     def get_ip():
         logger('获取 IP')
         global ip
-        ip = str.rstrip(requests.get(config['get_ip_from']).text)
-        for i in ip.split('.'):
-            try:
-                j = int(i)
-            except:
-                raise '不合规的IP！'
-            if j<0 or j>255:
-                raise '不合规的IP！'
+        resp = requests.get(config['get_ip_from'])
+        if resp.status_code != 200:
+            raise "HTTP ERROR " + resp.status_code
+        ip = str.rstrip(resp.text)
         logger('IP: {}'.format(ip))
 
 
@@ -181,15 +195,15 @@ try:
     def get_record(loaded_json):
         domains = loaded_json['result']
         for domain in domains:
-            if config['name'] == domain['name']:
-                logger('指定域名已有解析记录')
+            if config['name'] == domain['name'] and config['type'] == domain['type']:
+                logger('指定类型的指定域名已有解析记录')
                 return domain
-        logger('指定域名无记录')
+        logger('指定类型的指定域名无记录')
         return None
 
     def set_dns():
         post_json = {
-            'type': 'A',
+            'type': config['type'],
             'name': config['name'],
             'content': ip,
             'proxied': config['proxied'],
