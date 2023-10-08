@@ -1,9 +1,10 @@
+version = "1.4"
 print('''ddns-py 启动！
 一款用于 cloudflare DNS 的 DDNS 工具。
-版本：1.3
+版本：{}
 作者：bddjr
 仓库：https://github.com/bddjr/ddns-py
-=============================================='''
+=============================================='''.format(version)
 )
 
 #部分源码借鉴自 https://zhuanlan.zhihu.com/p/461993720
@@ -58,8 +59,7 @@ try:
     logger('读取配置文件 ' + config_filepath)
     if not os.path.exists(config_filepath):
         logger('未找到配置文件，尝试生成模板')
-        with open(config_filepath, 'x') as f:
-            f.write(
+        open(config_filepath, 'x', encoding='utf-8').write(
 '''{
     "api_key": "",
     "zone_id": "",
@@ -70,11 +70,14 @@ try:
     "proxied": false
 }
 '''
-            )
+        )
         logger('配置文件模板已生成，请在配置文件里填写 name（域名） api_key（API密钥） zone_id（区域ID）')
         exit()
 
-    config = json.load(open(config_filepath, 'r'))
+    f = open(config_filepath, 'r', encoding='utf-8')
+    config = json.load(f)
+    f.close()
+    del f
 
     config = {
         "api_key": str.strip(config['api_key']),
