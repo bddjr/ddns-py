@@ -15,5 +15,5 @@ files = {
     ]
 }
 
-os.system('bandizip c releases/release-{}-no-readme.zip {}'.format(version, ' '.join(files['no-readme'])))
-os.system('bandizip c releases/release-{}.zip {} {}'.format(version, ' '.join(files['no-readme']), ' '.join(files['default'])))
+os.system('bandizip c releases/ddns-py-release-{}-no-readme.zip {}'.format(version, ' '.join(files['no-readme'])))
+os.system('bandizip c releases/ddns-py-release-{}.zip {} {}'.format(version, ' '.join(files['no-readme']), ' '.join(files['default'])))
