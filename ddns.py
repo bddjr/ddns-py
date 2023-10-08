@@ -1,6 +1,6 @@
 print('''ddns-py 启动！
 一款用于 cloudflare DNS 的 DDNS 工具。
-版本：1.2
+版本：1.3
 作者：bddjr
 仓库：https://github.com/bddjr/ddns-py
 =============================================='''
@@ -104,6 +104,9 @@ try:
         b = True
     if config['name'] in ['','example.com']:
         logger('【错误】请在配置文件里填写 name（域名）')
+        b = True
+    if config['ttl'] < 1:
+        logger('【错误】TTL不得小于1秒！')
         b = True
 
     if b:
