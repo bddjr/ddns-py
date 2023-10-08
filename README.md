@@ -1,6 +1,8 @@
 # ddns-py
 一款用于 cloudflare DNS 的 DDNS 工具。
 
+![1](readmepic/1.png)  
+
 ***
 ## 配置
 
