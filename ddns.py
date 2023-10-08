@@ -1,4 +1,4 @@
-version = "1.4"
+version = "1.5"
 print('''ddns-py 启动！
 一款用于 cloudflare DNS 的 DDNS 工具。
 版本：{}
@@ -121,7 +121,7 @@ try:
         if config_getipform_lower in ["https://6.ipw.cn","http://6.ipw.cn"]:
             logger('【错误】A记录是用于IPv4的，但您错误地将get_ip_from填写为获取IPv6的，请改成 https://4.ipw.cn')
             exit()
-        logger('【提醒】请预先确认您的网络支持公网IPv4再使用。判断方法：路由器显示的 WAN IP 与 https://4.ipw.cn 显示的一致')
+        logger('【提醒】请预先确认您的网络支持公网IPv4再使用。')
     elif config['type'] == "AAAA":
         if config_getipform_lower in ["https://4.ipw.cn","http://4.ipw.cn"]:
             logger('【错误】AAAA记录是用于IPv6的，但您错误地将get_ip_from填写为获取IPv4的，请改成 https://6.ipw.cn')
@@ -152,21 +152,21 @@ try:
         if stri in ['mode=1','mode=2','mode=3']:
             mode = int(stri[-1])
 
-    # 没有符合的命令行参数，询问
-    if mode == None:
-        try:
+    try:
+        # 没有符合的命令行参数，询问
+        if mode == None:
             mode = int(input(
 '''选择操作模式
 %s
 请输入编号：''' % ('\n'.join(modelist))
             ))
-        except:
-            print('\n输入格式错误！')
-            exit()
-        print('')
+        print('\n模式：' + modelist[mode-1])
+    except:
+        print('\n输入格式错误！')
+        exit()
 
-    print('模式：%s\n—————————————————————————' % (modelist[mode-1]))
     del modelist
+    print('—————————————————————————')
 
 
     headers = {
@@ -182,7 +182,7 @@ try:
         if resp.status_code != 200:
             raise "HTTP ERROR " + resp.status_code
         ip = str.rstrip(resp.text)
-        logger('IP: {}'.format(ip))
+        logger('IP: ' + ip)
 
 
     def get_dns():
@@ -332,4 +332,3 @@ try:
 
 except KeyboardInterrupt:
     print('\nCtrl+C')
-    sys.exit()

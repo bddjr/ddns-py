@@ -7,7 +7,7 @@
 ## 配置
 
 ### ip
-如果使用IPv4（A），请确认您的网络支持公网IPv4。判断方法：路由器显示的 WAN IP 与 https://4.ipw.cn 显示的一致
+如果使用IPv4（A），请确认您的网络支持公网IPv4。
 ```
     "type": "A",
     "get_ip_from": "https://4.ipw.cn",
