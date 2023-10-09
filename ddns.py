@@ -1,26 +1,29 @@
-version = "1.5"
-print('''ddns-py 启动！
+version = "1.6"
+
+if __name__ == "__main__": 
+  try:
+    print(
+'''ddns-py 启动！
 一款用于 cloudflare DNS 的 DDNS 工具。
 版本：{}
 作者：bddjr
 仓库：https://github.com/bddjr/ddns-py
 =============================================='''.format(version)
-)
+    )
 
-#部分源码借鉴自 https://zhuanlan.zhihu.com/p/461993720
+    #部分源码借鉴自 https://zhuanlan.zhihu.com/p/461993720
 
-#Py3自带模块
-import json, time, sys, copy, os
+    #Py3自带模块
+    import json, time, sys, copy, os, asyncio
 
-def logger(text):
-    if isinstance(text, dict):
-        text = json.dumps(text, indent=4)
-    print("[{}] {}".format(
-        time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-        text
-    ))
+    def logger(text):
+        if isinstance(text, dict):
+            text = json.dumps(text, indent=4)
+        print("[{}] {}".format(
+            time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            text
+        ))
 
-try:
     #Py3可能不自带的模块
     def pip_install(name):
         logger('尝试使用清华源安装模块 '+name)
@@ -47,7 +50,7 @@ try:
             return
         except: pass
 
-        logger('导入失败。:(')
+        logger('导入失败，请尝试安装pip或检查是否联网。:(')
         exit()
 
     try: import requests
@@ -55,8 +58,21 @@ try:
 
     del pip_install
 
+    dirname = os.path.dirname(__file__)
+
     config_filepath = 'ddns.py.config.json'
+    mode = None
+
+    # 通过命令行参数，自动获得模式编号
+    for i in sys.argv:
+        s = str.strip(i)
+        if s.startswith('configfile='):
+            config_filepath = s[len('configfile=')+1 : ]
+        elif s.startswith('mode='):
+            mode = int(s[-1])
+
     logger('读取配置文件 ' + config_filepath)
+    config_filepath = os.path.join(dirname, config_filepath)
     if not os.path.exists(config_filepath):
         logger('未找到配置文件，尝试生成模板')
         open(config_filepath, 'x', encoding='utf-8').write(
@@ -78,6 +94,7 @@ try:
     config = json.load(f)
     f.close()
     del f
+    del config_filepath
 
     config = {
         "api_key": str.strip(config['api_key']),
@@ -144,25 +161,19 @@ try:
         '3 删除记录后退出'
     ]
 
-    mode = None
-
-    # 通过命令行参数，自动获得模式编号
-    for i in sys.argv:
-        stri = str.strip(i)
-        if stri in ['mode=1','mode=2','mode=3']:
-            mode = int(stri[-1])
-
-    try:
-        # 没有符合的命令行参数，询问
-        if mode == None:
-            mode = int(input(
+    # 没有符合的命令行参数，询问
+    if mode == None:
+        mode = input(
 '''选择操作模式
 %s
 请输入编号：''' % ('\n'.join(modelist))
-            ))
+        )
+    
+    try:
+        mode = int(mode)
         print('\n模式：' + modelist[mode-1])
     except:
-        print('\n输入格式错误！')
+        print('\n找不到模式，请检查输入是否有误。:(')
         exit()
 
     del modelist
@@ -178,36 +189,55 @@ try:
     def get_ip():
         logger('获取 IP')
         global ip
-        resp = requests.get(config['get_ip_from'])
+        ip = None
+        try:
+            resp = requests.get(config['get_ip_from'])
+        except Exception as e:
+            logger(e)
+            return
         if resp.status_code != 200:
-            raise "HTTP ERROR " + resp.status_code
-        ip = str.rstrip(resp.text)
+            logger("获取IP失败！HTTP状态码 " + resp.status_code)
+            return
+        ip = str.strip(resp.text)
         logger('IP: ' + ip)
 
 
     def get_dns():
-        resp = requests.get(
-            'https://api.cloudflare.com/client/v4/zones/{}/dns_records'.format(config['zone_id']),
-            headers = headers
-        )
-        loaded_json = json.loads(resp.text)
-        #logger(loaded_json)
-        if not loaded_json['success']:
-            logger(loaded_json['errors'])
+        try:
+            resp = requests.get(
+                'https://api.cloudflare.com/client/v4/zones/{}/dns_records'.format(config['zone_id']),
+                headers = headers
+            )
+        except Exception as e:
+            logger(e)
+            logger('获取DNS失败，请检查是否断网。:(')
             return False
-        return loaded_json
+        try:
+            loaded_json = json.loads(resp.text)
+        except Exception as e:
+            logger(e)
+            logger('获取DNS后遇到了未知的问题，网络请求已完成，但返回的JSON解码失败。:(')
+            return False
+        #logger(loaded_json)
+        if loaded_json['success']:
+            return loaded_json
+        logger(loaded_json['errors'])
+        logger('获取DNS失败，请检查api_key与zone_id是否有效。:(')
+        return False
 
 
     def get_record(loaded_json):
         domains = loaded_json['result']
-        for domain in domains:
-            if config['name'] == domain['name'] and config['type'] == domain['type']:
+        for d in domains:
+            if config['name'] == d['name'] and config['type'] == d['type']:
                 logger('指定类型的指定域名已有解析记录')
-                return domain
+                return d
         logger('指定类型的指定域名无记录')
         return None
 
     def set_dns():
+        if ip == None:
+            return False
         post_json = {
             'type': config['type'],
             'name': config['name'],
@@ -217,37 +247,47 @@ try:
         }
 
         def update_dns_record():
-            if dns_id == None:
-                logger('正在添加解析')
-                resp = requests.post(
-                    'https://api.cloudflare.com/client/v4/zones/{}/dns_records'.format(
-                        config['zone_id']
-                    ),
-                    json = post_json,
-                    headers = headers
-                )
-            else:
-                logger('正在更新解析')
-                resp = requests.put(
-                    'https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}'.format(
-                        config['zone_id'],
-                        dns_id
-                    ),
-                    json = post_json,
-                    headers = headers
-                )
-            loaded_json = json.loads(resp.text)
+            try:
+                if dns_id == None:
+                    logger('正在添加解析')
+                    resp = requests.post(
+                        'https://api.cloudflare.com/client/v4/zones/{}/dns_records'.format(
+                            config['zone_id']
+                        ),
+                        json = post_json,
+                        headers = headers
+                    )
+                else:
+                    logger('正在更新解析')
+                    resp = requests.put(
+                        'https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}'.format(
+                            config['zone_id'],
+                            dns_id
+                        ),
+                        json = post_json,
+                        headers = headers
+                    )
+            except Exception as e:
+                logger(e)
+                logger('解析设置失败，请检查是否断网。:(')
+                return False
+            try:
+                loaded_json = json.loads(resp.text)
+            except Exception as e:
+                logger(e)
+                logger('尝试设置解析后遇到了未知的问题，网络请求已完成，但返回的JSON解码失败。:(')
+                return False
             #logger(loaded_json)
             if loaded_json['success']:
+                logger('解析设置成功！:D')
                 return True
-            else:
-                logger(loaded_json['errors'])
-                return False
+            logger(loaded_json['errors'])
+            logger('解析设置失败，请检查api_key与zone_id是否有效。:(')
+            return False
 
         logger('获取 DNS')
         loaded_json = get_dns()
         if loaded_json == False:
-            logger('获取失败。:(')
             return False
         record = get_record(loaded_json)
         if record != None:
@@ -259,12 +299,7 @@ try:
             dns_id = None
 
         logger('设置 DNS')
-        update_dns_success = update_dns_record()
-        if update_dns_success:
-            logger('解析设置成功！:D')
-        else:
-            logger('解析设置失败。:(')
-        return update_dns_success
+        return update_dns_record()
 
 
 
@@ -273,40 +308,37 @@ try:
         set_dns()
 
     elif mode == 2:
-        try:
-            get_ip()
-            update_dns_success = set_dns()
-            old_ip = ip
-            run_mode_2_success = True
-        except Exception as e:
-            print(e)
-            run_mode_2_success = False
+        get_ip()
+        update_dns_success = set_dns()
+        old_ip = ip
+
+        async def print_sleep_time(i):
+            print("\r倒计时{}秒".format(i), end="", flush=True)
 
         while True:
-            if run_mode_2_success and update_dns_success:
-                logger('{}秒后检测IP是否变化\n'.format(config['ttl']))
-                time.sleep(config['ttl'])
+            if update_dns_success:
+                sleep_time = max(config['ttl'], 5)
+                logger('{}秒后检测IP是否变化\n'.format(sleep_time))
             else:
-                logger('似乎发生了错误，15秒后重试\n')
-                time.sleep(15)
+                sleep_time = 5
+                logger('似乎发生了错误，{}秒后重试\n'.format(sleep_time))
 
-            try:
-                get_ip()
-                if old_ip == ip and update_dns_success and run_mode_2_success:
-                    logger('本地对比IP无变化。')
-                else:
-                    update_dns_success = set_dns()
-                    old_ip = ip
-                run_mode_2_success = True
-            except Exception as e:
-                print(e)
-                run_mode_2_success = False
+            for i in range(sleep_time, 0, -1):
+                asyncio.run(print_sleep_time(i))
+                time.sleep(1)
+            print("\r", end="", flush=True)
+
+            get_ip()
+            if old_ip == ip and update_dns_success:
+                logger('本地对比IP无变化。')
+            else:
+                update_dns_success = set_dns()
+                old_ip = ip
 
     elif mode == 3:
         logger('获取 DNS')
         loaded_json = get_dns()
         if loaded_json == False:
-            logger('获取失败。:(')
             exit()
         record = get_record(loaded_json)
         if record == None:
@@ -314,21 +346,31 @@ try:
         dns_id = record['id']
 
         logger('删除 DNS 解析记录')
-        resp = requests.delete(
-            'https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}'.format(
-                config['zone_id'],
-                dns_id
-            ),
-            headers = headers
-        )
-        loaded_json = json.loads(resp.text)
+        try:
+            resp = requests.delete(
+                'https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}'.format(
+                    config['zone_id'],
+                    dns_id
+                ),
+                headers = headers
+            )
+        except Exception as e:
+            logger(e)
+            logger('解析删除失败，请检查是否断网。:(')
+            exit()
+        try:
+            loaded_json = json.loads(resp.text)
+        except Exception as e:
+            logger(e)
+            logger('尝试设置解析后遇到了未知的问题，网络请求已完成，但返回的JSON解码失败。:(')
+            exit()
         #logger(loaded_json)
-        if bool(loaded_json['success']):
+        if loaded_json['success']:
             logger('解析删除成功！:D')
         else:
             logger(loaded_json['errors'])
-            logger('解析删除失败。:(')
+            logger('解析删除失败，请检查api_key与zone_id是否有效。:(')
 
 
-except KeyboardInterrupt:
+  except KeyboardInterrupt:
     print('\nCtrl+C')
