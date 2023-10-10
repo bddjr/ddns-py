@@ -1,4 +1,4 @@
-version = "1.6"
+version = "1.7"
 
 if __name__ == "__main__": 
   try:
@@ -67,15 +67,16 @@ if __name__ == "__main__":
     for i in sys.argv:
         s = str.strip(i)
         if s.startswith('configfile='):
-            config_filepath = s[len('configfile=')+1 : ]
+            config_filepath = s[len('configfile=') : ]
         elif s.startswith('mode='):
-            mode = int(s[-1])
+            mode = s[len('mode=') : ]
 
     logger('读取配置文件 ' + config_filepath)
     config_filepath = os.path.join(dirname, config_filepath)
     if not os.path.exists(config_filepath):
-        logger('未找到配置文件，尝试生成模板')
-        open(config_filepath, 'x', encoding='utf-8').write(
+        logger('未找到配置文件')
+        if str.lower(str.strip(input('您需要生成配置文件模板吗？(y/n)'))).startswith('y'):
+            open(config_filepath, 'x', encoding='utf-8').write(
 '''{
     "api_key": "",
     "zone_id": "",
@@ -86,25 +87,39 @@ if __name__ == "__main__":
     "proxied": false
 }
 '''
-        )
-        logger('配置文件模板已生成，请在配置文件里填写 name（域名） api_key（API密钥） zone_id（区域ID）')
+            )
+            logger('配置文件模板已生成，请在配置文件里填写 name（域名） api_key（API密钥） zone_id（区域ID）')
+        else:
+            logger('您已取消')
         exit()
 
-    f = open(config_filepath, 'r', encoding='utf-8')
-    config = json.load(f)
-    f.close()
-    del f
+    try:
+        f = open(config_filepath, 'r', encoding='utf-8')
+    except Exception as e:
+        logger(e)
+        logger('配置文件读取失败，请检查文件权限。:(')
+        exit()
+    try:
+        config = json.load(f)
+        f.close()
+        del f
+    except:
+        logger('配置文件读取失败，JSON格式错误。:(')
+        exit()
     del config_filepath
 
-    config = {
-        "api_key": str.strip(config['api_key']),
-        "zone_id": str.strip(config['zone_id']),
-        "type": str.upper(str.strip(config['type'])),
-        "get_ip_from": str.strip(config['get_ip_from']),
-        "name": str.lower(str.strip(config['name'])),
-        "ttl": int(config['ttl']),
-        "proxied": bool(config['proxied'])
-    }
+    try:
+        config = {
+            "api_key": str.strip(config['api_key']),
+            "zone_id": str.strip(config['zone_id']),
+            "type": str.upper(str.strip(config['type'])),
+            "get_ip_from": str.strip(config['get_ip_from']),
+            "name": str.lower(str.strip(config['name'])),
+            "ttl": int(config['ttl']),
+            "proxied": bool(config['proxied'])
+        }
+    except:
+        logger('配置文件读取失败，请检查是否有缺失的项，或类型是否正确，可尝试将配置文件删除或重命名，然后运行程序重新生成再填写。')
 
     def pixel_str(instr):
         return instr[0:3] + "*" * (len(instr)-6) + instr[-3:]
