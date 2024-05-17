@@ -327,21 +327,15 @@ f'''选择操作模式
 			update_dns_success = set_dns()
 			old_ip = ip
 
-			async def print_sleep_time(i):
-				print("\r倒计时{}秒".format(i), end="", flush=True)
-
 			while True:
 				if update_dns_success:
-					sleep_time = max(config['ttl'], 5)
-					logger('{}秒后检测IP是否变化\n'.format(sleep_time))
+					sleep_time = max(config['ttl'], 60)
+					logger(f'{sleep_time}秒后检测IP是否变化\n')
 				else:
-					sleep_time = 5
-					logger('似乎发生了错误，{}秒后重试\n'.format(sleep_time))
+					sleep_time = 30
+					logger(f'似乎发生了错误，{sleep_time}秒后重试\n')
 
-				for i in range(sleep_time, 0, -1):
-					asyncio.run(print_sleep_time(i))
-					time.sleep(1)
-				print("\r", end="", flush=True)
+				time.sleep(sleep_time)
 
 				get_ip()
 				if old_ip == ip and update_dns_success:
