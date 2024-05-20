@@ -89,14 +89,14 @@ f'''ddns-py 启动！
         if str.lower(str.strip(input('您需要生成配置文件模板吗？(y/n)'))).startswith('y'):
             open(config_filepath, 'x', encoding='utf-8').write(
 '''{
-"api_key": "",
-"zone_id": "",
-"type": "A",
-"get_ip_from": "https://4.ipw.cn",
-"name": "example.com",
-"ttl": 60,
-"proxied": false
-}
+    "api_key": "",
+    "zone_id": "",
+    "type": "A",
+    "get_ip_from": "https://4.ipw.cn",
+    "name": "example.com",
+    "ttl": 60,
+    "proxied": false
+    }
 '''
             )
             logger('配置文件模板已生成，请在配置文件里填写 name（域名） api_key（API密钥） zone_id（区域ID）')
