@@ -96,7 +96,7 @@ f'''ddns-py 启动！
     "name": "example.com",
     "ttl": 60,
     "proxied": false
-    }
+}
 '''
             )
             logger('配置文件模板已生成，请在配置文件里填写 name（域名） api_key（API密钥） zone_id（区域ID）')
