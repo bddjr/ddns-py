@@ -1,5 +1,6 @@
 @echo off
 chcp 65001 >nul
+title ddns-py
 python ddns.py
 echo >nul
 echo ==============================================

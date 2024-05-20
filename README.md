@@ -38,10 +38,13 @@
 ## 启动方法
 ### Windows
 预先安装python3  
-然后双击 `ddns.py.bat` 启动，或者在命令行输入 `python ddns.py`  
+然后双击 `ddns.py.bat` 启动，或者在命令行输入 `py ddns.py`  
 
-### Linux
-自己研究怎么安装python3，怎么安装pip，怎么启动。
+### Ubuntu
+```
+apt install python3 python3-pip
+python3 ./ddns.py
+```
 
 ***
 ## 命令行参数
