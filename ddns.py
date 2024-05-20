@@ -41,7 +41,7 @@ f'''ddns-py 启动！
             notChecked_pip3 = False
 
         logger('尝试使用清华源安装模块 '+name)
-        cmd = 'pip3 install requests -i https://pypi.tuna.tsinghua.edu.cn/simple'
+        cmd = f'pip3 install {name} -i https://pypi.tuna.tsinghua.edu.cn/simple'
         print(cmd)
         status = os.system(cmd)
         print()
@@ -51,7 +51,7 @@ f'''ddns-py 启动！
             return
 
         logger('尝试直接安装模块 '+name)
-        cmd = 'pip3 install requests'
+        cmd = f'pip3 install {name}'
         print(cmd)
         status = os.system(cmd)
         print()
