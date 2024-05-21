@@ -137,7 +137,6 @@ f'''ddns-py 启动！
 
     printconfig = copy.deepcopy(config)
     printconfig['api_key'] = pixel_str(printconfig['api_key'])
-    printconfig['zone_id'] = pixel_str(printconfig['zone_id'])
     logger(printconfig)
     del printconfig
 
