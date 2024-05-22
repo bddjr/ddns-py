@@ -1,5 +1,7 @@
 # ddns-py
-一款用于 cloudflare DNS 的 DDNS 工具。
+一款用于 cloudflare DNS 的 DDNS 工具。  
+
+华为云: https://github.com/bddjr/ddns-py-huawei  
 
 ![1](readmepic/1.png)  
 
