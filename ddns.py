@@ -5,7 +5,7 @@ try:
     print(
 f'''ddns-py 启动！
 一款用于 cloudflare DNS 的 DDNS 工具。
-版本：1.10
+版本：1.10.1
 作者：bddjr
 仓库：https://github.com/bddjr/ddns-py
 =============================================='''
@@ -128,8 +128,10 @@ f'''ddns-py 启动！
             "ttl": int(config['ttl']),
             "proxied": bool(config['proxied'])
         }
-    except:
+    except Exception as e:
+        logger(e)
         logger('配置文件读取失败，请检查是否有缺失的项，或类型是否正确，可尝试将配置文件删除或重命名，然后运行程序重新生成再填写。')
+        exit()
 
     def pixel_str(instr):
         return instr[0:3] + "*" * (len(instr)-6) + instr[-3:]
