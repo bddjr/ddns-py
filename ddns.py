@@ -41,7 +41,7 @@ f'''ddns-py 启动！
             status = os.system(cmd)
             if status != 0:
                 logger(f'请先安装 pip3 。:(')
-                exit()
+                exit(1)
             notChecked_pip3 = False
 
         logger('尝试使用清华源安装模块 '+name)
@@ -65,7 +65,7 @@ f'''ddns-py 启动！
             return
 
         logger(f'模块 {name} 安装失败，请检查是否联网。:(')
-        exit()
+        exit(1)
 
     try: import requests
     except: pip_install('requests')
@@ -102,21 +102,21 @@ f'''ddns-py 启动！
             logger('配置文件模板已生成，请在配置文件里填写 name（域名） api_key（API密钥） zone_id（区域ID）')
         else:
             logger('您已取消')
-        exit()
+        exit(1)
 
     try:
         f = open(config_filepath, 'r', encoding='utf-8')
     except Exception as e:
         logger(e)
         logger('配置文件读取失败，请检查文件权限。:(')
-        exit()
+        exit(1)
     try:
         config = json.load(f)
         f.close()
         del f
     except:
         logger('配置文件读取失败，JSON格式错误。:(')
-        exit()
+        exit(1)
     del config_filepath
 
     try:
@@ -131,7 +131,7 @@ f'''ddns-py 启动！
     except Exception as e:
         logger(e)
         logger('配置文件读取失败，请检查是否有缺失的项，或类型是否正确，可尝试将配置文件删除或重命名，然后运行程序重新生成再填写。')
-        exit()
+        exit(1)
 
     def pixel_str(instr):
         return instr[0:3] + "*" * (len(instr)-6) + instr[-3:]
@@ -153,25 +153,25 @@ f'''ddns-py 启动！
         b = True
 
     if b:
-        exit()
+        exit(1)
     del b
 
     config_getipform_lower = str.lower(config['get_ip_from'])
     if config['type'] == "A":
         if config_getipform_lower in ["https://6.ipw.cn","http://6.ipw.cn"]:
             logger('【错误】A记录是用于IPv4的，但您错误地将get_ip_from填写为获取IPv6的，请改成 https://4.ipw.cn')
-            exit()
+            exit(1)
         logger('【提醒】请预先确认您的网络支持公网IPv4再使用。')
         ipRegexp = re.compile(r'(\d{1,3}\.){3}\d{1,3}')
     elif config['type'] == "AAAA":
         if config_getipform_lower in ["https://4.ipw.cn","http://4.ipw.cn"]:
             logger('【错误】AAAA记录是用于IPv6的，但您错误地将get_ip_from填写为获取IPv4的，请改成 https://6.ipw.cn')
-            exit()
+            exit(1)
         logger('【提醒】请预先确认您的网络支持公网IPv6再使用。家庭宽带可能需要将光猫、路由器的防火墙关闭（会暴露所有IPv6端口！）')
         ipRegexp = re.compile(r'([0-9a-fA-F]{1,4})?(::?[0-9a-fA-F]{1,4}){1,7}')
     else:
         logger(f'【错误】该程序不支持{config['type']}类型记录！请修改type')
-        exit()
+        exit(1)
     del config_getipform_lower
 
     if config['proxied']:
@@ -199,7 +199,7 @@ f'''选择操作模式
         print('\n模式：' + modelist[mode-1])
     except:
         print('\n找不到模式，请检查输入是否有误。:(')
-        exit()
+        exit(1)
 
     del modelist
     print('—————————————————————————')
@@ -330,6 +330,8 @@ f'''选择操作模式
         if not zone:
             return False
         record = get_record(zone)
+        if record == False:
+            return False
         try:
             if record:
                 if record['content'] == ip:
@@ -341,15 +343,13 @@ f'''选择操作模式
                     json = post_json,
                     headers = headers
                 )
-            elif record == None:
+            else:
                 logger('正在添加解析')
                 resp = requests.post(
                     f'https://api.cloudflare.com/client/v4/zones/{zone['id']}/dns_records',
                     json = post_json,
                     headers = headers
                 )
-            else:
-                return False
         except Exception as e:
             logger(e)
             logger('解析设置失败，请检查是否断网。:(')
@@ -397,28 +397,29 @@ f'''选择操作模式
     elif mode == 3:
         zone = get_zone()
         if not zone:
-            exit()
+            exit(1)
         record = get_record(zone)
-        if not record:
+        if record == False:
+            exit(1)
+        if record == None:
             exit()
-        dns_id = record['id']
 
         logger('删除解析记录')
         try:
             resp = requests.delete(
-                f'https://api.cloudflare.com/client/v4/zones/{zone['id']}/dns_records/{dns_id}',
+                f'https://api.cloudflare.com/client/v4/zones/{zone['id']}/dns_records/{record['id']}',
                 headers = headers
             )
         except Exception as e:
             logger(e)
             logger('解析删除失败，请检查是否断网。:(')
-            exit()
+            exit(1)
         try:
             loaded_json: dict[str,Any] = json.loads(resp.text)
         except Exception as e:
             logger(e)
             logger('尝试设置解析后遇到了未知的问题，网络请求已完成，但返回的JSON解码失败。:(')
-            exit()
+            exit(1)
         #logger(loaded_json)
         if loaded_json['success']:
             logger('解析删除成功！:D')
