@@ -77,7 +77,7 @@ ddns-py 启动！
 ### Ubuntu
 ```
 apt install python3 python3-pip
-python3 ./ddns.py
+python3 ddns.py
 ```
 
 ***
