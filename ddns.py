@@ -5,7 +5,7 @@ try:
     print(
 f'''ddns-py 启动！
 一款用于 cloudflare DNS 的 DDNS 工具。
-版本：1.10.1
+版本：1.10.2
 作者：bddjr
 仓库：https://github.com/bddjr/ddns-py
 =============================================='''
